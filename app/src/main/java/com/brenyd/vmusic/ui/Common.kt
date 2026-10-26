@@ -92,6 +92,18 @@ fun Badge(text: String, color: Color) {
     }
 }
 
+/** SQ / HQ / CD / HD tag, colored by tier. */
+@Composable
+fun QualityBadge(tag: String) {
+    val c = when (tag) {
+        "HD" -> Color(0xFFE6B54A)
+        "CD" -> VColors.Blue
+        "HQ" -> Color(0xFF5FC29A)
+        else -> VColors.Text3
+    }
+    Badge(tag, c)
+}
+
 @Composable
 fun MatchedBadge() {
     Box(
@@ -127,7 +139,7 @@ fun SongRow(song: Song, onClick: () -> Unit, onMore: () -> Unit, showArt: Boolea
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isNew) Badge("NEW", VColors.NewBadge)
                 if (song.matched) MatchedBadge()
-                if (song.hq) Badge("SQ", VColors.Blue)
+                song.quality?.let { QualityBadge(it.tag) }
                 Text(
                     "${song.artist} - ${song.album}", color = VColors.Text2, fontSize = 12.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),

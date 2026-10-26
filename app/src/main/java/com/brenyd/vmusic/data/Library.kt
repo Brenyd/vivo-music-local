@@ -52,6 +52,8 @@ object Library {
     val playlists = MutableStateFlow<List<Playlist>>(emptyList())
     /** Songs the user hid from the library (files stay on the phone). */
     val hidden = MutableStateFlow<Set<String>>(emptySet())
+    /** Probed audio quality per file. */
+    val quality = MutableStateFlow<Map<String, AudioQuality>>(emptyMap())
     val scanning = MutableStateFlow(false)
     val scannedOnce = MutableStateFlow(false)
 
@@ -76,7 +78,8 @@ object Library {
         app = context.applicationContext
         prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
         loadState()
-        val all = combine(raw, overrides) { r, o -> r.map { merge(it, o[it.path]) } }
+        loadQuality()
+        val all = combine(raw, overrides, quality) { r, o, q -> r.map { merge(it, o[it.path]).copy(quality = q[qualityKey(it)]) } }
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
         songs = combine(all, hidden) { list, h -> if (h.isEmpty()) list else list.filter { it.path !in h } }
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
@@ -269,6 +272,27 @@ object Library {
     fun toggleFavorite(path: String) {
         favorites.value = favorites.value.toMutableSet().apply { if (!add(path)) remove(path) }
         saveSoon()
+    }
+
+    // ------------------------------------------------------------------ audio quality
+    /** Cache key: path + size, so a replaced file (e.g. a better rip) is probed again. */
+    fun qualityKey(r: RawSong) = r.path + "|" + r.size
+
+    private val qualityFile get() = File(app.filesDir, "quality.json")
+
+    fun setQuality(add: Map<String, AudioQuality>) {
+        if (add.isEmpty()) return
+        quality.value = quality.value + add
+        scope.launch(Dispatchers.IO) {
+            val o = JSONObject()
+            for ((k, v) in quality.value) o.put(k, v.toJson())
+            runCatching { qualityFile.writeText(o.toString()) }
+        }
+    }
+
+    private fun loadQuality() {
+        val o = runCatching { JSONObject(qualityFile.readText()) }.getOrNull() ?: return
+        quality.value = o.keys().asSequence().associateWith { AudioQuality.fromJson(o.getJSONObject(it)) }
     }
 
     fun hide(paths: List<String>) {

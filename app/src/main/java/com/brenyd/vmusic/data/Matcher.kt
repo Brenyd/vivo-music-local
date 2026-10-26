@@ -50,8 +50,18 @@ object Matcher {
 
     private suspend fun run(force: Boolean) {
         load()
-        // 1) embedded covers (fast, offline)
         val raws = Library.raws()
+        // 0) real audio quality (format, bit depth, sample rate, bitrate)
+        val known = Library.quality.value
+        val batch = HashMap<String, AudioQuality>()
+        for ((i, r) in raws.withIndex()) {
+            val k = Library.qualityKey(r)
+            if (k in known) continue
+            AudioQuality.probe(r)?.let { batch[k] = it }
+            if (batch.size >= 25) { Library.setQuality(HashMap(batch)); batch.clear(); status.value = "Reading audio quality… ${i + 1}/${raws.size}" }
+        }
+        Library.setQuality(batch)
+        // 1) embedded covers (fast, offline)
         var n = 0
         for (r in raws) {
             if (r.path in embeddedChecked) continue

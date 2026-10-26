@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -220,7 +221,7 @@ fun NowPlayingScreen() {
                 ActionIcon(Icons.Rounded.MoreVert, "More") { s?.let { Ui.more(it) } }
             }
             Spacer(Modifier.height(14.dp))
-            SeekBar(pos, dur)
+            SeekBar(pos, dur, s?.quality?.label)
             Spacer(Modifier.height(10.dp))
             // transport
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween,
@@ -350,7 +351,7 @@ private fun FullLyrics(doc: Lyrics.Doc?, pos: Long, onTapOutside: () -> Unit) {
 }
 
 @Composable
-fun SeekBar(pos: Long, dur: Long) {
+fun SeekBar(pos: Long, dur: Long, qualityLabel: String? = null) {
     var dragFrac by remember { mutableStateOf<Float?>(null) }
     val frac = dragFrac ?: if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
@@ -373,10 +374,17 @@ fun SeekBar(pos: Long, dur: Long) {
             Box(Modifier.width(w * frac).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xCCFFFFFF)))
             Box(Modifier.offset(x = (w * frac) - 9.dp).size(18.dp).clip(CircleShape).background(Color.White))
         }
-        Row(Modifier.fillMaxWidth()) {
-            Text(fmtTime(if (dragFrac != null) (dragFrac!! * dur).toLong() else pos), color = VColors.Text2, fontSize = 12.sp)
-            Spacer(Modifier.weight(1f))
-            Text(fmtTime(dur), color = VColors.Text2, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(fmtTime(if (dragFrac != null) (dragFrac!! * dur).toLong() else pos), color = VColors.Text2, fontSize = 12.sp,
+                modifier = Modifier.width(56.dp))
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                if (qualityLabel != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.GraphicEq, null, tint = VColors.Text2, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(qualityLabel, color = VColors.Text2, fontSize = 12.sp, maxLines = 1)
+                }
+            }
+            Text(fmtTime(dur), color = VColors.Text2, fontSize = 12.sp, textAlign = TextAlign.End, modifier = Modifier.width(56.dp))
         }
     }
 }

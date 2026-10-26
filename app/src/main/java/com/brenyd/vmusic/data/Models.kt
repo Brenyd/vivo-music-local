@@ -27,13 +27,9 @@ data class Song(
     val fileTitle: String,
     val fileArtist: String,
     val fileAlbum: String,
+    /** Real audio quality read from the file (null until probed). */
+    val quality: AudioQuality? = null,
 ) {
-    /** Lossless / high-quality badge ("SQ"). */
-    val hq: Boolean
-        get() = mime.contains("flac", true) || mime.contains("alac", true) || mime.contains("wav", true) ||
-            mime.contains("x-ape", true) || path.endsWith(".flac", true) || path.endsWith(".wav", true) ||
-            path.endsWith(".ape", true) || path.endsWith(".dsf", true)
-
     val key: String get() = path
     val folderName: String get() = folder.substringAfterLast('/')
 }

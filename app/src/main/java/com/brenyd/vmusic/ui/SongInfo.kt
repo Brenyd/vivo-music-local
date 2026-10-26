@@ -133,9 +133,10 @@ fun SongInfoSheet(initial: Song) {
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = VColors.Text2)
             }
             Text("More information", color = VColors.Text2, fontSize = 15.sp, modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 6.dp))
-            val fmt = s.path.substringAfterLast('.', "").uppercase(Locale.US)
-            val kbps = if (s.bitrate > 0) "${s.bitrate / 1000} kbps" else "-"
-            Text("Format: $fmt   ·   Bitrate: $kbps   ·   Size: ${String.format(Locale.US, "%.1f MB", s.size / 1048576.0)}" +
+            val q = s.quality
+            val fmt = q?.label ?: s.path.substringAfterLast('.', "").uppercase(Locale.US)
+            val kbps = when { q != null && q.kbps > 0 -> "${q.kbps} kbps"; s.bitrate > 0 -> "${s.bitrate / 1000} kbps"; else -> "-" }
+            Text("Quality: ${q?.tag ?: "-"}   ·   $fmt   ·   Bitrate: $kbps   ·   Size: ${String.format(Locale.US, "%.1f MB", s.size / 1048576.0)}" +
                 (if (s.year > 0) "   ·   Year: ${s.year}" else ""), color = VColors.Text3, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 28.dp))
             Text(prettyPath(s.path), color = VColors.Text3, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp))
             Spacer(Modifier.height(16.dp))
