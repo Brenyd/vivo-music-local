@@ -169,14 +169,18 @@ object Library {
         val modern = Build.VERSION.SDK_INT >= 30
         if (modern) { cols += "album_artist"; cols += "bitrate" }
         val minMs = minDurationSec * 1000L
-        val sel = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= ?"
+        // finished files only: no pending (still being written) or trashed rows, nothing empty
+        val sel = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= ? AND " +
+            "${MediaStore.Audio.Media.SIZE} > 0" + if (modern) " AND is_pending = 0 AND is_trashed = 0" else ""
         val out = ArrayList<RawSong>()
+        val stale = ArrayList<String>()
         app.contentResolver.query(uri, cols.toTypedArray(), sel, arrayOf(minMs.toString()), null)?.use { c ->
             fun str(name: String) = c.getColumnIndex(name).let { if (it >= 0) c.getString(it) else null }
             fun lng(name: String) = c.getColumnIndex(name).let { if (it >= 0) c.getLong(it) else 0L }
             while (c.moveToNext()) {
                 val id = lng(MediaStore.Audio.Media._ID)
                 val path = str(MediaStore.Audio.Media.DATA) ?: continue
+                if (!isRealMusicFile(path)) { stale += path; continue }
                 val display = str(MediaStore.Audio.Media.DISPLAY_NAME) ?: path.substringAfterLast('/')
                 var title = str(MediaStore.Audio.Media.TITLE).orEmpty().trim()
                 var artist = cleanTag(str(MediaStore.Audio.Media.ARTIST))
@@ -206,7 +210,30 @@ object Library {
                 )
             }
         }
+        // ask Android to drop index entries for files that are gone, so they stop coming back
+        if (stale.isNotEmpty()) {
+            val gone = stale.filter { !File(it).exists() }
+            if (gone.isNotEmpty()) runCatching { android.media.MediaScannerConnection.scanFile(app, gone.toTypedArray(), null, null) }
+            Log.i(TAG, "skipped ${stale.size} entries that aren't finished music files")
+        }
         return out
+    }
+
+    /**
+     * Only real, finished music files: the file must exist and not be empty, and must not be a
+     * temporary/partial download or live in an app's private or hidden folder (where download apps
+     * keep their work-in-progress copies).
+     */
+    private fun isRealMusicFile(path: String): Boolean {
+        val lower = path.lowercase()
+        if (lower.contains("/android/data/") || lower.contains("/android/obb/")) return false
+        if (path.split('/').any { it.startsWith(".") && it.length > 1 }) return false
+        val name = lower.substringAfterLast('/')
+        if (listOf(".part", ".tmp", ".temp", ".download", ".crdownload", ".partial", ".pending").any { name.endsWith(it) }) return false
+        if (name.contains(".tmp.") || name.startsWith("temp_") || name.startsWith("~")) return false
+        val f = File(path)
+        if (!f.exists()) return false
+        return f.length() > 0
     }
 
     private fun cleanTag(v: String?): String {

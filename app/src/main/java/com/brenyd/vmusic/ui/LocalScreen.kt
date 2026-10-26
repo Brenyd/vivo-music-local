@@ -23,6 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,7 +56,7 @@ import com.brenyd.vmusic.playback.Ids
 import com.brenyd.vmusic.playback.PlayerConn
 import kotlinx.coroutines.launch
 
-private val LOCAL_TABS = listOf("Songs", "Artists", "Albums", "Folders")
+private val LOCAL_TABS = listOf("Songs", "Artists", "Albums", "Playlists", "Folders")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,10 +73,10 @@ fun LocalScreen() {
                 val sel = pager.currentPage == i
                 Column(
                     Modifier.clip(RoundedCornerShape(8.dp)).clickable { scope.launch { pager.animateScrollToPage(i) } }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(t, color = if (sel) VColors.Text else VColors.Text2, fontSize = 17.sp,
+                    Text(t, color = if (sel) VColors.Text else VColors.Text2, fontSize = 16.sp, maxLines = 1,
                         fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal)
                     Spacer(Modifier.height(5.dp))
                     Box(Modifier.width(28.dp).height(3.dp).clip(RoundedCornerShape(2.dp))
@@ -85,6 +89,7 @@ fun LocalScreen() {
                 0 -> SongsPage()
                 1 -> ArtistsPage()
                 2 -> AlbumsPage()
+                3 -> PlaylistsPage()
                 else -> FoldersPage()
             }
         }
@@ -223,5 +228,53 @@ fun SortSheet(current: SortOrder, onDismiss: () -> Unit, onPick: (SortOrder) -> 
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun PlaylistsPage() {
+    val lists by Library.playlists.collectAsStateWithLifecycle()
+    val favs by Library.favorites.collectAsStateWithLifecycle()
+    val recents by Library.recents.collectAsStateWithLifecycle()
+    val songs by Library.songs.collectAsStateWithLifecycle()
+    var creating by remember { mutableStateOf(false) }
+    val icon: @Composable (androidx.compose.ui.graphics.vector.ImageVector, Color) -> Unit = { v, tint ->
+        Box(Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)).background(VColors.Tile), contentAlignment = Alignment.Center) {
+            Icon(v, null, tint = tint, modifier = Modifier.size(26.dp))
+        }
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        item {
+            EntityRow("New playlist", "Create an empty playlist", null, leading = { icon(Icons.Rounded.Add, VColors.Text) }) { creating = true }
+        }
+        item {
+            EntityRow("Favorites", "${favs.size} songs", null, leading = { icon(Icons.Rounded.Favorite, VColors.Accent) }) {
+                Ui.push(Dest.PlaylistPage(Ids.FAVORITES))
+            }
+        }
+        item {
+            EntityRow("Recently played", "${recents.size.coerceAtMost(100)} songs", null, leading = { icon(Icons.Rounded.History, VColors.Text) }) {
+                Ui.push(Dest.PlaylistPage(Ids.RECENT))
+            }
+        }
+        item {
+            EntityRow("Most played", "Your top songs", null, leading = { icon(Icons.AutoMirrored.Rounded.TrendingUp, VColors.Text) }) {
+                Ui.push(Dest.PlaylistPage(Ids.MOST))
+            }
+        }
+        if (lists.isNotEmpty()) item {
+            Text("My playlists", color = VColors.Text2, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp))
+        }
+        items(lists, key = { it.id }) { p ->
+            val first = remember(p.paths, songs) { Library.songsFor(p.paths.take(1)).firstOrNull() }
+            EntityRow(p.name, "${p.paths.size} songs", first?.art, placeholder = Icons.AutoMirrored.Rounded.QueueMusic) {
+                Ui.push(Dest.PlaylistPage("pl:" + p.id))
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+    if (creating) TextPrompt("New playlist", "", onDismiss = { creating = false }) {
+        if (it.isNotBlank()) Library.createPlaylist(it.trim())
+        creating = false
     }
 }

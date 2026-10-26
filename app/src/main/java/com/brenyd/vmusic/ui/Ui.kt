@@ -22,7 +22,7 @@ sealed interface Dest {
 /** Simple app-wide UI state (one activity, one window). */
 object Ui {
     var tab by mutableIntStateOf(1)          // 0 Home, 1 Local, 2 Me
-    var localTab by mutableIntStateOf(0)     // Songs, Artists, Albums, Folders
+    var localTab by mutableIntStateOf(0)     // Songs, Artists, Albums, Playlists, Folders
     val stack = mutableStateListOf<Dest>()
     var playerOpen by mutableStateOf(false)
 
