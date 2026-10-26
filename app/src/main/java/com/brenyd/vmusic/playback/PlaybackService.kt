@@ -8,6 +8,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
@@ -18,6 +19,7 @@ import com.brenyd.vmusic.data.Art
 import com.brenyd.vmusic.data.Library
 import com.brenyd.vmusic.data.Song
 import com.brenyd.vmusic.ui.MainActivity
+import com.brenyd.vmusic.ui.MusicWidget
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -30,7 +32,9 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this)
+        val renderers = DefaultRenderersFactory(this)
+            .setEnableAudioFloatOutput(AudioFx.hiResOutput) // keep 24-bit audio at full resolution
+        val player = ExoPlayer.Builder(this, renderers)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
                 true,
@@ -38,16 +42,40 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val sessionId = am.generateAudioSessionId()
+        player.audioSessionId = sessionId
+        AudioFx.attach(sessionId)
+        AudioFx.initDevices(this)
+        // let system equalizer apps (e.g. Wavelet) attach to our audio too
+        sendBroadcast(Intent(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
+            .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
+            .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC))
+
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 mediaItem?.let { Ids.pathOf(it.mediaId) }?.let { Library.recordPlay(it) }
                 QueueStore.save(player)
+                fadeInFrom = if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && AudioFx.fadeSeconds > 0) System.currentTimeMillis() else 0L
+                MusicWidget.update(this@PlaybackService, player)
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (!isPlaying) QueueStore.save(player)
+                MusicWidget.update(this@PlaybackService, player)
+            }
+
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                gain = AudioFx.gainFactor(AudioFx.readGain(tracks))
+                for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO && g.length > 0) {
+                    AudioFx.onTrackSampleRate(g.getTrackFormat(0).sampleRate)
+                }
+                applyVolume(player)
             }
         })
+        AudioFx.onGainSettingsChanged = { gain = AudioFx.gainFactor(AudioFx.readGain(player.currentTracks)); applyVolume(player) }
+        startFadeTicker(player)
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
@@ -62,12 +90,46 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
+    // ------------------------------------------------------------------ volume: ReplayGain x fade
+    private var gain = 1f
+    private var fade = 1f
+    private var fadeInFrom = 0L
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun applyVolume(player: Player) {
+        player.volume = (gain * fade).coerceIn(0f, 1f)
+    }
+
+    /** "Fade between songs": fade out at the end of a song and in at the start of the next. */
+    private fun startFadeTicker(player: Player) {
+        val tick = object : Runnable {
+            override fun run() {
+                val len = AudioFx.fadeSeconds * 1000L
+                var f = 1f
+                if (len > 0 && player.isPlaying && player.repeatMode != Player.REPEAT_MODE_ONE) {
+                    val dur = player.duration
+                    val pos = player.currentPosition
+                    if (dur > len * 2 && player.hasNextMediaItem() && dur - pos < len) f = ((dur - pos).toFloat() / len).coerceIn(0f, 1f)
+                    if (fadeInFrom > 0) {
+                        val since = System.currentTimeMillis() - fadeInFrom
+                        if (since < len) f = minOf(f, (since.toFloat() / len).coerceIn(0.05f, 1f)) else fadeInFrom = 0
+                    }
+                }
+                if (f != fade) { fade = f; applyVolume(player) }
+                handler.postDelayed(this, 100)
+            }
+        }
+        handler.post(tick)
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         val p = session?.player
         if (p == null || !p.playWhenReady || p.mediaItemCount == 0) stopSelf()
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        AudioFx.release()
         session?.let {
             QueueStore.save(it.player)
             it.player.release()

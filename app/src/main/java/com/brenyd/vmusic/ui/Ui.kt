@@ -10,6 +10,7 @@ import com.brenyd.vmusic.data.Song
 /** Screens pushed on top of the bottom-tab pages. */
 sealed interface Dest {
     data object Search : Dest
+    data object Sound : Dest
     data class AlbumPage(val key: String) : Dest
     data class ArtistPage(val name: String) : Dest
     data class FolderPage(val path: String) : Dest

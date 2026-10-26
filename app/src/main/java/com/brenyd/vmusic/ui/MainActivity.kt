@@ -170,6 +170,7 @@ fun AppRoot() {
                         else -> LocalScreen()
                     }
                     is Dest.Search -> SearchScreen()
+                    is Dest.Sound -> SoundScreen()
                     is Dest.AlbumPage -> AlbumScreen(top.key)
                     is Dest.ArtistPage -> ArtistScreen(top.name)
                     is Dest.FolderPage -> FolderScreen(top.path)

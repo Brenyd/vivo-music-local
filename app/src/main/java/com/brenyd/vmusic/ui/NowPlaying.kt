@@ -208,13 +208,7 @@ fun NowPlayingScreen() {
 
             // action row
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                ActionIcon(Icons.Rounded.Equalizer, "Sound effects") {
-                    runCatching {
-                        ctx.startActivity(Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                            .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, ctx.packageName)
-                            .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC))
-                    }.onFailure { Ui.toast = "No equalizer on this phone" }
-                }
+                ActionIcon(Icons.Rounded.Equalizer, "Sound effects") { Ui.push(Dest.Sound) }
                 ActionIcon(Icons.Rounded.Timer, "Sleep timer") { Ui.sleepOpen = true }
                 ActionIcon(Icons.Rounded.Subject, "Lyrics") { showLyrics = !showLyrics }
                 ActionIcon(Icons.Rounded.Share, "Share") { s?.let { shareSong(ctx, it) } }

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Refresh
@@ -199,6 +200,12 @@ fun MeScreen() {
             SettingRow(Icons.Rounded.AutoAwesome, if (matching) "Matching…" else "Match all songs now",
                 if (matching) status else "$withArt of ${songs.size} have covers · $matchedCount matched online") {
                 if (!matching) { Matcher.kick(force = true); Ui.toast = "Matching song info…" }
+            }
+        }
+        item { SectionTitle("Sound") }
+        item {
+            SettingRow(Icons.Rounded.Equalizer, "Sound effects & output", "Equalizer, volume leveling, fades, hi-res and USB DAC") {
+                Ui.push(Dest.Sound)
             }
         }
         item { SectionTitle("Library") }

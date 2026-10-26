@@ -65,6 +65,18 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".ui.MusicWidget"
+            android:exported="false"
+            android:label="Music">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+
         <!-- Serves cached album art / artist photos to Android Auto, the notification and the lock screen -->
         <provider
             android:name=".data.ArtProvider"
