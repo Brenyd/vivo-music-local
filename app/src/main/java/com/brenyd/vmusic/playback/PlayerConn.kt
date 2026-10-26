@@ -137,6 +137,11 @@ object PlayerConn {
     fun seekTo(ms: Long) = withController { it.seekTo(ms); position.value = ms }
     fun playAt(index: Int) = withController { it.seekTo(index, 0); it.play() }
     fun removeAt(index: Int) = withController { it.removeMediaItem(index) }
+
+    /** Drop every queue entry for a song (e.g. after its file was deleted). */
+    fun removePath(path: String) = withController { c ->
+        for (i in c.mediaItemCount - 1 downTo 0) if (Ids.pathOf(c.getMediaItemAt(i).mediaId) == path) c.removeMediaItem(i)
+    }
     fun move(from: Int, to: Int) = withController { it.moveMediaItem(from, to) }
 
     fun playNext(song: Song) = withController { c ->

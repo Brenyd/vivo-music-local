@@ -31,6 +31,8 @@ object Ui {
     var addToPlaylist by mutableStateOf<List<Song>?>(null)
     var queueOpen by mutableStateOf(false)
     var sleepOpen by mutableStateOf(false)
+    var deleteFor by mutableStateOf<Song?>(null)
+    var hiddenOpen by mutableStateOf(false)
     var toast by mutableStateOf<String?>(null)
 
     fun push(d: Dest) {
@@ -44,6 +46,8 @@ object Ui {
             moreFor != null -> moreFor = null
             queueOpen -> queueOpen = false
             sleepOpen -> sleepOpen = false
+            deleteFor != null -> deleteFor = null
+            hiddenOpen -> hiddenOpen = false
             addToPlaylist != null -> addToPlaylist = null
             playerOpen -> playerOpen = false
             stack.isNotEmpty() -> stack.removeAt(stack.lastIndex)

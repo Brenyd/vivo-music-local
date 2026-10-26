@@ -1,5 +1,12 @@
 package com.brenyd.vmusic.ui
 
+import android.app.Activity
+import android.app.RecoverableSecurityException
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -31,6 +38,8 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.PlaylistRemove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -84,6 +93,81 @@ fun Sheets() {
     Ui.addToPlaylist?.let { AddToPlaylistSheet(it) }
     if (Ui.queueOpen) QueueSheet()
     if (Ui.sleepOpen) SleepSheet()
+    Ui.deleteFor?.let { DeleteDialog(it) }
+    if (Ui.hiddenOpen) HiddenSheet()
+}
+
+/** Permanently delete a song file (Android asks for confirmation on 11+). */
+@Composable
+private fun DeleteDialog(song: Song) {
+    val ctx = LocalContext.current
+    fun done() {
+        PlayerConn.removePath(song.path)
+        Library.removeDeleted(song.path)
+        Ui.toast = "Deleted \"${song.title}\""
+    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
+        if (r.resultCode == Activity.RESULT_OK) {
+            // Android 10 only grants access; the delete has to be repeated
+            if (Build.VERSION.SDK_INT < 30) runCatching { ctx.contentResolver.delete(song.uri, null, null) }
+            done()
+        } else Ui.toast = "Not deleted"
+        Ui.deleteFor = null
+    }
+    AlertDialog(
+        onDismissRequest = { Ui.deleteFor = null },
+        containerColor = VColors.Sheet,
+        title = { Text("Delete song?", color = VColors.Text) },
+        text = { Text("\"${song.title}\" will be permanently deleted from your phone.", color = VColors.Text2) },
+        confirmButton = {
+            TextButton(onClick = {
+                try {
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        val pi = MediaStore.createDeleteRequest(ctx.contentResolver, listOf(song.uri))
+                        launcher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                    } else {
+                        val n = ctx.contentResolver.delete(song.uri, null, null)
+                        if (n > 0) done() else Ui.toast = "Couldn't delete the song"
+                        Ui.deleteFor = null
+                    }
+                } catch (e: Exception) {
+                    if (Build.VERSION.SDK_INT >= 29 && e is RecoverableSecurityException) {
+                        launcher.launch(IntentSenderRequest.Builder(e.userAction.actionIntent.intentSender).build())
+                    } else {
+                        Ui.toast = "Couldn't delete the song"
+                        Ui.deleteFor = null
+                    }
+                }
+            }) { Text("Delete", color = VColors.Accent) }
+        },
+        dismissButton = { TextButton(onClick = { Ui.deleteFor = null }) { Text("Cancel", color = VColors.Text2) } },
+    )
+}
+
+@Composable
+private fun HiddenSheet() {
+    val hidden by Library.hiddenSongs.collectAsStateWithLifecycle()
+    VSheet({ Ui.hiddenOpen = false }) {
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 8.dp, top = 18.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Hidden songs (${hidden.size})", color = VColors.Text, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            if (hidden.isNotEmpty()) TextButton(onClick = { Library.unhide(hidden.map { it.path }) }) { Text("Show all", color = VColors.Accent) }
+        }
+        if (hidden.isEmpty()) Text("No hidden songs", color = VColors.Text2, fontSize = 14.sp, modifier = Modifier.padding(24.dp))
+        LazyColumn(Modifier.heightIn(max = 520.dp)) {
+            itemsIndexed(hidden) { _, s ->
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ArtImage(s.artPath, 46.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(s.title, color = VColors.Text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(s.artist, color = VColors.Text2, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    TextButton(onClick = { Library.unhide(listOf(s.path)) }) { Text("Unhide", color = VColors.Accent) }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+    }
 }
 
 @Composable
@@ -112,9 +196,13 @@ private fun MoreSheet(song: Song, playlistId: String?) {
             })
             add(Triple(Icons.Rounded.Description, "Song information") { close(); Ui.infoFor = s })
             add(Triple(Icons.Rounded.Share, "Share") { close(); shareSong(ctx, s) })
-            if (playlistId != null) add(Triple(Icons.Rounded.Delete, "Remove from playlist") {
+            if (playlistId != null) add(Triple(Icons.Rounded.PlaylistRemove, "Remove from playlist") {
                 close(); Library.removeFromPlaylist(playlistId, s.path)
             })
+            add(Triple(Icons.Rounded.VisibilityOff, "Hide song") {
+                close(); Library.hide(listOf(s.path)); Ui.toast = "Hidden. Find it in Me > Hidden songs"
+            })
+            add(Triple(Icons.Rounded.Delete, "Delete") { close(); Ui.deleteFor = s })
         }
         tiles.chunked(4).forEach { row ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {

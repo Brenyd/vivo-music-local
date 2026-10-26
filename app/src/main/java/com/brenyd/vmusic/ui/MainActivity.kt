@@ -157,7 +157,7 @@ fun PermissionScreen(onAsk: () -> Unit) {
 @Composable
 fun AppRoot() {
     BackHandler(enabled = Ui.playerOpen || Ui.stack.isNotEmpty() || Ui.moreFor != null || Ui.infoFor != null ||
-        Ui.queueOpen || Ui.sleepOpen || Ui.addToPlaylist != null) { Ui.back() }
+        Ui.queueOpen || Ui.sleepOpen || Ui.addToPlaylist != null || Ui.deleteFor != null || Ui.hiddenOpen) { Ui.back() }
 
     Box(Modifier.fillMaxSize().background(VColors.Bg)) {
         Column(Modifier.fillMaxSize()) {

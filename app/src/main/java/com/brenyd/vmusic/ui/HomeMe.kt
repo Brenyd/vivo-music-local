@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -206,6 +207,10 @@ fun MeScreen() {
                 skipShort = it; Library.minDurationSec = if (it) 30 else 0
                 Library.scope.launch { Library.scan() }
             }
+        }
+        item {
+            val hiddenList by Library.hiddenSongs.collectAsStateWithLifecycle()
+            SettingRow(Icons.Rounded.VisibilityOff, "Hidden songs", plural(hiddenList.size, "song")) { Ui.hiddenOpen = true }
         }
         item {
             SettingRow(Icons.Rounded.Refresh, "Scan for music", "Look for new or removed songs") {

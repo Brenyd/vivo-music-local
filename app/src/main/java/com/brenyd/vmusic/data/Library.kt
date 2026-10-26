@@ -50,11 +50,16 @@ object Library {
     val recents = MutableStateFlow<List<String>>(emptyList())
     val playCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    /** Songs the user hid from the library (files stay on the phone). */
+    val hidden = MutableStateFlow<Set<String>>(emptySet())
     val scanning = MutableStateFlow(false)
     val scannedOnce = MutableStateFlow(false)
 
     /** All songs with matched/edited info applied. */
     lateinit var songs: StateFlow<List<Song>>
+        private set
+    /** Hidden songs, for the "Hidden songs" list. */
+    lateinit var hiddenSongs: StateFlow<List<Song>>
         private set
     lateinit var albums: StateFlow<List<Album>>
         private set
@@ -71,7 +76,11 @@ object Library {
         app = context.applicationContext
         prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
         loadState()
-        songs = combine(raw, overrides) { r, o -> r.map { merge(it, o[it.path]) } }
+        val all = combine(raw, overrides) { r, o -> r.map { merge(it, o[it.path]) } }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+        songs = combine(all, hidden) { list, h -> if (h.isEmpty()) list else list.filter { it.path !in h } }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+        hiddenSongs = combine(all, hidden) { list, h -> list.filter { it.path in h }.sortedBy { it.title.lowercase() } }
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
         albums = songs.map { list ->
             list.groupBy { (it.album.lowercase() + "\u0000" + albumArtistOf(it).lowercase()) }
@@ -262,6 +271,30 @@ object Library {
         saveSoon()
     }
 
+    fun hide(paths: List<String>) {
+        hidden.value = hidden.value + paths
+        saveSoon()
+    }
+
+    fun unhide(paths: List<String>) {
+        hidden.value = hidden.value - paths.toSet()
+        saveSoon()
+    }
+
+    /** Forget everything about a song whose file was deleted. */
+    fun removeDeleted(path: String) {
+        raw.value = raw.value.filter { it.path != path }
+        overrides.value[path]?.art?.let { runCatching { File(it).delete() } }
+        overrides.value = overrides.value - path
+        favorites.value = favorites.value - path
+        hidden.value = hidden.value - path
+        recents.value = recents.value - path
+        playCounts.value = playCounts.value - path
+        playlists.value = playlists.value.map { it.copy(paths = it.paths - path) }
+        Lyrics.forget(path)
+        saveSoon()
+    }
+
     fun addFavorites(paths: List<String>) {
         favorites.value = favorites.value + paths
         saveSoon()
@@ -324,6 +357,7 @@ object Library {
         o.put("favorites", JSONArray(favorites.value.toList()))
         o.put("recents", JSONArray(recents.value))
         o.put("playCounts", JSONObject(playCounts.value as Map<*, *>))
+        o.put("hidden", JSONArray(hidden.value.toList()))
         o.put("playlists", JSONArray().apply {
             for (p in playlists.value) put(JSONObject().put("id", p.id).put("name", p.name).put("paths", JSONArray(p.paths)))
         })
@@ -346,6 +380,7 @@ object Library {
             overrides.value = m
         }
         o.optJSONObject("artistImages")?.let { a -> artistImages.value = a.keys().asSequence().associateWith { a.getString(it) } }
+        o.optJSONArray("hidden")?.let { a -> hidden.value = (0 until a.length()).map { a.getString(it) }.toSet() }
         o.optJSONArray("favorites")?.let { a -> favorites.value = (0 until a.length()).map { a.getString(it) }.toSet() }
         o.optJSONArray("recents")?.let { a -> recents.value = (0 until a.length()).map { a.getString(it) } }
         o.optJSONObject("playCounts")?.let { a -> playCounts.value = a.keys().asSequence().associateWith { a.getInt(it) } }
