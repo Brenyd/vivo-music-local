@@ -7,6 +7,12 @@ A local music player for Android that recreates the look of vivo Music (OriginOS
 - **Song information sheet**: change the cover, edit the info, "Matching" (pick from online results), and restore the original info
 - **Lyrics**: synced, scrolling lyrics from [LRCLIB](https://lrclib.net). Tap a line to jump to it, or paste or edit lyrics yourself
 - **Player**: vinyl-style now-playing screen with colors taken from the album art, a sleep timer, the play queue, play modes and a swipe on the cover to change songs
+- **Real audio quality**: SQ / HQ / CD / HD tags read from the files themselves, and "FLAC · 24-bit · 48 kHz" shown in the player
+- **Sound**: in-app equalizer and bass boost, ReplayGain volume leveling (track or album), gapless playback or fades between songs, 32-bit float hi-res output, and bit-perfect output to USB DACs (Android 14+)
+- **Network libraries**: Navidrome/Subsonic servers, WebDAV and SMB shares (NAS or PC). Browse, play, and save songs to the phone
+- **Convert to AAC**: makes smaller .m4a copies of songs (Media3 Transformer)
+- **Home-screen widget** with the cover and playback controls
+- **Hide or delete songs**
 - **Android Auto**: browse Songs, Albums, Artists and Playlists, plus search and voice "play …"
 - **vivo Origin Island**: the `vmusic-island` build uses the package name `com.hiby.music`, which OriginOS allows on the island. You can't have HiBy Music installed at the same time.
 
