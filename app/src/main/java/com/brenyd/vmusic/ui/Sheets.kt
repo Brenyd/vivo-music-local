@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Transform
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.PlaylistRemove
 import androidx.compose.material3.AlertDialog
@@ -95,6 +96,7 @@ fun Sheets() {
     if (Ui.queueOpen) QueueSheet()
     if (Ui.sleepOpen) SleepSheet()
     Ui.deleteFor?.let { DeleteDialog(it) }
+    Ui.convertFor?.let { ConvertDialog(it) }
     if (Ui.hiddenOpen) HiddenSheet()
 }
 
@@ -142,6 +144,37 @@ private fun DeleteDialog(song: Song) {
             }) { Text("Delete", color = VColors.Accent) }
         },
         dismissButton = { TextButton(onClick = { Ui.deleteFor = null }) { Text("Cancel", color = VColors.Text2) } },
+    )
+}
+
+/** Convert a song to AAC (.m4a) at a chosen bitrate. */
+@Composable
+private fun ConvertDialog(song: Song) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { Ui.convertFor = null },
+        containerColor = VColors.Sheet,
+        title = { Text("Convert to AAC", color = VColors.Text) },
+        text = {
+            Column {
+                Text("Makes a smaller .m4a copy in Music/vMusic/Converted. The original stays.", color = VColors.Text2, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                listOf(128, 192, 256, 320).forEach { k ->
+                    Row(Modifier.fillMaxWidth().clickable {
+                        Ui.convertFor = null
+                        Ui.toast = "Converting \"${song.title}\"…"
+                        scope.launch {
+                            val ok = runCatching { com.brenyd.vmusic.data.Converter.toAac(song, k) }.getOrDefault(false)
+                            Ui.toast = if (ok) "Saved to Music/vMusic/Converted" else "Couldn't convert this song"
+                        }
+                    }.padding(vertical = 12.dp)) {
+                        Text("AAC $k kbps" + when (k) { 128 -> "  (smallest)"; 256 -> "  (recommended)"; 320 -> "  (best)"; else -> "" },
+                            color = VColors.Text, fontSize = 16.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { Ui.convertFor = null }) { Text("Cancel", color = VColors.Text2) } },
     )
 }
 
@@ -209,6 +242,7 @@ private fun MoreSheet(song: Song, playlistId: String?) {
             if (playlistId != null) add(Triple(Icons.Rounded.PlaylistRemove, "Remove from playlist") {
                 close(); Library.removeFromPlaylist(playlistId, s.path)
             })
+            add(Triple(Icons.Rounded.Transform, "Convert to AAC") { close(); Ui.convertFor = s })
             add(Triple(Icons.Rounded.VisibilityOff, "Hide song") {
                 close(); Library.hide(listOf(s.path)); Ui.toast = "Hidden. Find it in Me > Hidden songs"
             })

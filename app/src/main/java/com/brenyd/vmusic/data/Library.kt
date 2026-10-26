@@ -55,6 +55,8 @@ object Library {
     /** Probed audio quality per file. */
     val quality = MutableStateFlow<Map<String, AudioQuality>>(emptyMap())
     val scanning = MutableStateFlow(false)
+    /** Info to copy onto converted files when they show up (keyed by "artist - title"). */
+    val pendingCopyInfo = java.util.concurrent.ConcurrentHashMap<String, Override>()
     val scannedOnce = MutableStateFlow(false)
 
     /** All songs with matched/edited info applied. */
@@ -138,6 +140,12 @@ object Library {
         try {
             val list = queryMediaStore()
             raw.value = list
+            if (pendingCopyInfo.isNotEmpty()) for (r in list) {
+                val base = r.path.substringAfterLast('/').substringBeforeLast('.')
+                if (pendingCopyInfo.containsKey(base) && r.path.contains("/vMusic/Converted/")) {
+                    pendingCopyInfo.remove(base)?.let { o -> if (overrides.value[r.path] == null) setOverride(r.path, o) }
+                }
+            }
             scannedOnce.value = true
             Log.i(TAG, "scanned ${list.size} songs")
             Matcher.kick()

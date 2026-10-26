@@ -34,6 +34,7 @@ object Ui {
     var queueOpen by mutableStateOf(false)
     var sleepOpen by mutableStateOf(false)
     var deleteFor by mutableStateOf<Song?>(null)
+    var convertFor by mutableStateOf<Song?>(null)
     var hiddenOpen by mutableStateOf(false)
     var toast by mutableStateOf<String?>(null)
 
@@ -49,6 +50,7 @@ object Ui {
             queueOpen -> queueOpen = false
             sleepOpen -> sleepOpen = false
             deleteFor != null -> deleteFor = null
+            convertFor != null -> convertFor = null
             hiddenOpen -> hiddenOpen = false
             addToPlaylist != null -> addToPlaylist = null
             playerOpen -> playerOpen = false

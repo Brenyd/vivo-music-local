@@ -98,6 +98,7 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.9.0")
     implementation("androidx.media3:media3-datasource:1.5.1")
+    implementation("androidx.media3:media3-transformer:1.5.1")
     // SMB network shares
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
 }
