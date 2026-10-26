@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlaylistPlay
@@ -182,10 +183,19 @@ private fun MoreSheet(song: Song, playlistId: String?) {
                 Text(if (s.matched) "Song information matched online" else "${s.artist} - ${s.album}", color = VColors.Text2, fontSize = 13.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = { close(); Ui.infoFor = s }) { Icon(Icons.Rounded.Info, "Song information", tint = VColors.Text) }
+            if (!s.remote) IconButton(onClick = { close(); Ui.infoFor = s }) { Icon(Icons.Rounded.Info, "Song information", tint = VColors.Text) }
             IconButton(onClick = close) { Icon(Icons.Rounded.Close, "Close", tint = VColors.Text) }
         }
-        val tiles = buildList<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>> {
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        val tiles = if (s.remote) buildList<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>> {
+            add(Triple(Icons.Rounded.PlaylistPlay, "Play next") { close(); PlayerConn.playNext(s); Ui.toast = "Will play next" })
+            add(Triple(Icons.Rounded.Add, "Add to queue") { close(); PlayerConn.addToQueue(listOf(s)); Ui.toast = "Added to queue" })
+            add(Triple(Icons.Rounded.Download, "Save to phone") {
+                close(); Ui.toast = "Saving \"${s.title}\"…"
+                scope.launch { Ui.toast = if (runCatching { com.brenyd.vmusic.data.Remote.saveToPhone(s) }.getOrDefault(false)) "Saved to Music/vMusic" else "Couldn't save the song" }
+            })
+            add(Triple(Icons.Rounded.Timer, "Sleep timer") { close(); Ui.sleepOpen = true })
+        } else buildList<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>> {
             add(Triple(Icons.AutoMirrored.Rounded.PlaylistAdd, "Add to playlist") { close(); Ui.addToPlaylist = listOf(s) })
             add(Triple(Icons.Rounded.PlaylistPlay, "Play next") { close(); PlayerConn.playNext(s); Ui.toast = "Will play next" })
             add(Triple(Icons.Rounded.Timer, "Sleep timer") { close(); Ui.sleepOpen = true })

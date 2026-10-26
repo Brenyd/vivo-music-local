@@ -11,6 +11,7 @@ import com.brenyd.vmusic.data.Song
 sealed interface Dest {
     data object Search : Dest
     data object Sound : Dest
+    data class ServerPage(val serverId: String, val browseId: String?, val title: String) : Dest
     data class AlbumPage(val key: String) : Dest
     data class ArtistPage(val name: String) : Dest
     data class FolderPage(val path: String) : Dest

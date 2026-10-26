@@ -7,7 +7,9 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.brenyd.vmusic.data.Art
 import com.brenyd.vmusic.data.Library
+import com.brenyd.vmusic.data.Remote
 import com.brenyd.vmusic.data.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,11 +52,11 @@ object PlayerConn {
         if (controller != null || pendingConnect) return
         pendingConnect = true
         if (!::current.isInitialized) {
-            current = combine(currentPath, Library.songs) { p, list -> p?.let { path -> list.firstOrNull { it.path == path } } }
+            current = combine(currentPath, Library.songs, Remote.songs) { p, list, rem -> p?.let { path -> list.firstOrNull { it.path == path } ?: rem[path] } }
                 .stateIn(scope, SharingStarted.Eagerly, null)
-            queue = combine(queuePaths, Library.songs) { ps, list ->
+            queue = combine(queuePaths, Library.songs, Remote.songs) { ps, list, rem ->
                 val m = list.associateBy { it.path }
-                ps.mapNotNull { m[it] }
+                ps.mapNotNull { m[it] ?: rem[it] }
             }.stateIn(scope, SharingStarted.Eagerly, emptyList())
         }
         val token = SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java))
@@ -64,6 +66,24 @@ object PlayerConn {
             controller = c
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) = refresh()
+
+                // songs on a server: fill in tags and cover from the file itself once it's playing
+                override fun onMediaMetadataChanged(md: androidx.media3.common.MediaMetadata) {
+                    val path = currentPath.value ?: return
+                    if (!Remote.isRemote(path)) return
+                    val art = md.artworkData?.let { bytes ->
+                        val f = Art.matchedFile(path)
+                        if (Art.saveImage(bytes, f)) f.absolutePath else null
+                    }
+                    Remote.update(path) { s ->
+                        s.copy(
+                            title = md.title?.toString()?.ifBlank { null } ?: s.title,
+                            artist = md.artist?.toString()?.ifBlank { null } ?: s.artist,
+                            album = md.albumTitle?.toString()?.ifBlank { null } ?: s.album,
+                            artPath = art ?: s.artPath,
+                        )
+                    }
+                }
             })
             refresh()
             pending.forEach { it(c) }

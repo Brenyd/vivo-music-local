@@ -40,7 +40,8 @@ class PlaybackService : MediaLibraryService() {
                 true,
             )
             .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(NetDataSource.factory(this)))
             .build()
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         val sessionId = am.generateAudioSessionId()
@@ -321,7 +322,7 @@ object Tree {
                 .setTrackNumber(s.track.takeIf { it > 0 })
                 .setReleaseYear(s.year.takeIf { it > 0 })
                 .setDurationMs(s.durationMs)
-                .setArtworkUri(Art.contentUri(s.artPath))
+                .setArtworkUri(Art.contentUri(s.artPath) ?: s.artUrl?.let { android.net.Uri.parse(it) })
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

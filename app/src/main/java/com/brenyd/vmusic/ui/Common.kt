@@ -71,7 +71,7 @@ fun ArtImage(
         Icon(placeholder, null, tint = Color(0xFF444444), modifier = Modifier.size(size * 0.45f))
         if (path != null) {
             AsyncImage(
-                model = File(path),
+                model = if (path.startsWith("http")) path else File(path),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -125,7 +125,7 @@ fun SongRow(song: Song, onClick: () -> Unit, onMore: () -> Unit, showArt: Boolea
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showArt) {
-            ArtImage(song.artPath, 52.dp)
+            ArtImage(song.art, 52.dp)
             Spacer(Modifier.width(14.dp))
         } else if (index != null) {
             Text("$index", color = VColors.Text3, fontSize = 15.sp, modifier = Modifier.width(36.dp))

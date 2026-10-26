@@ -170,7 +170,7 @@ fun NowPlayingScreen() {
                 } else {
                     Column(Modifier.fillMaxSize()) {
                         Spacer(Modifier.height(8.dp))
-                        VinylCover(s?.artPath, playing, swipe = { dir -> if (dir < 0) PlayerConn.next() else PlayerConn.previous() })
+                        VinylCover(s?.art, playing, swipe = { dir -> if (dir < 0) PlayerConn.next() else PlayerConn.previous() })
                         Spacer(Modifier.height(28.dp))
                         Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {

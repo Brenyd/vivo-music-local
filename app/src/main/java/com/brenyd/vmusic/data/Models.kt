@@ -29,7 +29,12 @@ data class Song(
     val fileAlbum: String,
     /** Real audio quality read from the file (null until probed). */
     val quality: AudioQuality? = null,
+    /** Cover URL for songs on a server. */
+    val artUrl: String? = null,
 ) {
+    val remote: Boolean get() = Remote.isRemote(path)
+    /** Something [ArtImage] can show: a cached file or a URL. */
+    val art: String? get() = artPath ?: artUrl
     val key: String get() = path
     val folderName: String get() = folder.substringAfterLast('/')
 }

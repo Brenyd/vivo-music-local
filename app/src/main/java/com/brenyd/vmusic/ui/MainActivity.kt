@@ -171,6 +171,7 @@ fun AppRoot() {
                     }
                     is Dest.Search -> SearchScreen()
                     is Dest.Sound -> SoundScreen()
+                    is Dest.ServerPage -> ServerScreen(top.serverId, top.browseId, top.title)
                     is Dest.AlbumPage -> AlbumScreen(top.key)
                     is Dest.ArtistPage -> ArtistScreen(top.name)
                     is Dest.FolderPage -> FolderScreen(top.path)
@@ -202,7 +203,7 @@ fun MiniPlayer() {
             .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtImage(song?.artPath, 46.dp, shape = RoundedCornerShape(8.dp))
+        ArtImage(song?.art, 46.dp, shape = RoundedCornerShape(8.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(song?.title ?: "Music, let life shine", color = VColors.Text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

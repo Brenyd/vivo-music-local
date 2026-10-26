@@ -202,6 +202,8 @@ fun MeScreen() {
                 if (!matching) { Matcher.kick(force = true); Ui.toast = "Matching song info…" }
             }
         }
+        item { SectionTitle("Network libraries") }
+        item { ServersSection() }
         item { SectionTitle("Sound") }
         item {
             SettingRow(Icons.Rounded.Equalizer, "Sound effects & output", "Equalizer, volume leveling, fades, hi-res and USB DAC") {

@@ -79,6 +79,7 @@ object Library {
         prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
         loadState()
         loadQuality()
+        Servers.load()
         val all = combine(raw, overrides, quality) { r, o, q -> r.map { merge(it, o[it.path]).copy(quality = q[qualityKey(it)]) } }
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
         songs = combine(all, hidden) { list, h -> if (h.isEmpty()) list else list.filter { it.path !in h } }
@@ -239,7 +240,7 @@ object Library {
 
     fun raws(): List<RawSong> = raw.value
     fun rawFor(path: String): RawSong? = raw.value.firstOrNull { it.path == path }
-    fun song(path: String): Song? = songs.value.firstOrNull { it.path == path }
+    fun song(path: String): Song? = songs.value.firstOrNull { it.path == path } ?: Remote.get(path)
     fun songById(id: Long): Song? = songs.value.firstOrNull { it.id == id }
     fun override(path: String): Override? = overrides.value[path]
 
